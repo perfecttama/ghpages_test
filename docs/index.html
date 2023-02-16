@@ -2,6 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <style>
         button {
             width: 10em;
@@ -15,14 +16,24 @@
             font-size: 18px;
             font-weight: bold;
         }
+        p {
+            overflow-wrap: normal;
+        }
     </style>
 </head>
 
 <body>
     <!-- 見出しの作成 -->
-    <h1>ghpages_test</h1>
+    <h1>FormantOscillator</h1>
     <!-- 表の作成 -->
     <table>
+        <!-- 3行目の作成 -->
+        <tr>
+            <td>
+                <button id="ButtonPlay">Play</button>
+            </td>
+        </tr>
+
         <!-- 1行目の作成 -->
         <tr>
             <!-- セルの作成 -->
@@ -51,18 +62,23 @@
         <!-- 2行目の作成 -->
         <tr>
             <!-- セルの作成 -->
-            <td>Frequency</td>
+            <td>freq</td>
             <td>
-                <input type="range" min="20" max="1000" size="10"
-                       id="freq" value="440" oninput="ChangeFreq()"
+                <input type="range" min="60" max="3000" size="10"
+                       id="freq" value="440" oninput="Changefreq()"
                        />
             </td>
-            <td><output id="outputfreq">440</output>[Hz]</td>
+            <td><output id="disp_freq">440</output>[Hz]</td>
         </tr>
-        
-        <br>
-        <br>
+    </table>
+    <br>
 
+    <p>参考1：https://www.g200kg.com/jp/docs/webaudio/oscillator.html</p>
+    <p>参考2：https://ameblo.jp/erikki-chann/entry-10410227225.html</p>
+
+    <!-- 見出しの作成 -->
+    <h1>MultiTapChecker</h1>
+    <table>
         <!-- 3行目の作成 -->
         <tr>
             <!-- セルの作成 -->
@@ -83,15 +99,13 @@
                 <output id="disp_a">_</output>
             </td>
             <td>
+            </td>
+            <td>
                 <output id="disp_b">_</output>
             </td>
         </tr>
     </table>
 
-    <br>
-
-    <p>参考1：https://www.g200kg.com/jp/docs/webaudio/oscillator.html</p>
-    <p>参考2：https://ameblo.jp/erikki-chann/entry-10410227225.html</p>
 
     <script type="text/javascript">
 
@@ -101,59 +115,71 @@
         var fmt_e = [502.2, 1965.3, 2803.7, 3739.3];
         var fmt_o = [496.5,  859.1, 2754.8, 3476.7];
 
-        window.AudioContext = window.webkitAudioContext||window.AudioContext;
-        var audioctx = new AudioContext();
-
-        // メイン用オシレータのセット
-        var oscmain = audioctx.createOscillator();
         var type  = document.getElementById("type").value;
         var freq  = parseFloat(document.getElementById("freq").value);
-        oscmain.frequency.value = freq;
-        oscmain.type = type;
-
-        // メイン用ゲインのセット
-        var gainmain = audioctx.createGain();
-        gainmain.gain.value = 0;
-
-        // フォルマント用ゲインのセット
-        var gainfmt = audioctx.createGain();
-        gainfmt.gain.value = 0;
-
-        // 接続とスタート
-        oscmain.connect(gainmain);
-        gainmain.connect(audioctx.destination);
-        gainfmt.connect(audioctx.destination);
-        oscmain.start();
-
-        // フォルマント用オシレータのセットと接続とスタート（4個）
+        var isInit = 0;
+        var fmt = fmt_a;
         var vowel = document.getElementById("vowel").value;
-        var oscfmt  = [];
-        for(var i=0; i<4; i++)
-        {
-            oscfmt[i] = audioctx.createOscillator();
-            oscfmt[i].connect(gainfmt);
+        var oscfmt = [];
 
-            oscfmt[i].frequency.value = fmt_u[i];
-            oscfmt[i].type = type;
+        window.AudioContext = window.webkitAudioContext||window.AudioContext;
+        document.querySelector('#ButtonPlay').addEventListener('click', function() {
+            var audioctx = new AudioContext();
 
-            oscfmt[i].start();
-        }
+            // メイン用オシレータのセット
+            var oscmain = audioctx.createOscillator();
+            oscmain.frequency.value = freq;
+            oscmain.type = type;
+
+            // フォルマント用オシレータのセット（4個）
+            for(var i=0; i<4; i++)
+            {
+                oscfmt[i] = audioctx.createOscillator();
+
+                oscfmt[i].frequency.value = fmt[i];
+                oscfmt[i].type = type;
+            }
+
+            var t0 = audioctx.currentTime;
+
+            // メイン用ゲインのセット
+            var gainmain = audioctx.createGain(); 
+            gainmain.gain.value = 0;
+            gainmain.gain.setValueAtTime(1, t0);
+            gainmain.gain.linearRampToValueAtTime(0, t0+.2);
+
+            // フォルマント用ゲインのセット
+            var gainfmt = audioctx.createGain();
+            gainfmt.gain.value = 0;
+            gainfmt.gain.setValueAtTime(0.5, t0);
+            gainfmt.gain.linearRampToValueAtTime(0, t0+.2);
+            
+            // 接続とスタートとストップ
+            oscmain.connect(gainmain);
+            gainmain.connect(audioctx.destination);
+            gainfmt.connect(audioctx.destination);
+            oscmain.start();
+            oscmain.stop(t0 + 1.0);
+
+
+            // フォルマント用オシレータのスタートとストップ（4個）
+            for(var i=0; i<4; i++)
+            {
+                oscfmt[i].connect(gainfmt);
+                oscfmt[i].start();
+                oscfmt[i].stop(t0 + 1.0);
+            }
+        });
+
 
         function ChangeType()
         {
-            type =  document.getElementById("type").value;
-            oscmain.type = type;
-
-            for(var i=0; i<4; i++)
-            {
-                oscfmt[i].type = type;
-            }
+            type = document.getElementById("type").value;
         }
 
         function ChangeVowel()
         {
             vowel =  document.getElementById("vowel").value;
-            var fmt = [];
             switch (vowel)
             {
                 case "fmt_a":
@@ -174,28 +200,14 @@
                 default:
                     break;
             }
-
-            for(var i=0; i<4; i++)
-            {
-                oscfmt[i].frequency.value = fmt[i];
-            }
-
-            var t0 = audioctx.currentTime;
-            gainmain.gain.value = 0;
-            gainmain.gain.setValueAtTime(1, t0);
-            gainmain.gain.linearRampToValueAtTime(0, t0+.2);
-
-            gainfmt.gain.value = 0;
-            gainfmt.gain.setValueAtTime(0.5, t0);
-            gainfmt.gain.linearRampToValueAtTime(0, t0+.2);
         }
 
-        function ChangeFreq()
+        function Changefreq()
         {
             freq =  parseFloat(document.getElementById("freq").value);
-            oscmain.frequency.value = freq;
-            document.getElementById('outputfreq').value = freq;
+            document.getElementById('disp_freq').value = freq;
         }
+
 
         document.querySelector('#ButtonA').addEventListener("touchstart", () => {
             document.getElementById('disp_a').value = 'A';
