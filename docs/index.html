@@ -5,14 +5,18 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <style>
         button {
+            width: 5em;
+            height: 3em;
+        }
+        #ButtonA, #ButtonB {
             width: 10em;
             height: 3em;
         }
-        output#disp_a {
+        #disp_a, #disp_b {
             font-size: 18px;
             font-weight: bold;
         }
-        output#disp_b {
+        select#vowel {
             font-size: 18px;
             font-weight: bold;
         }
@@ -23,20 +27,34 @@
 </head>
 
 <body>
+    <a href="https://github.com/perfecttama/ghpages_test" target="_blank" rel="noopener noreferrer">GitHub Repo</a>
     <!-- 見出しの作成 -->
     <h1>FormantOscillator</h1>
     <!-- 表の作成 -->
-    <table>
-        <!-- 3行目の作成 -->
-        <tr>
-            <td>
-                <button id="ButtonPlay">Play</button>
-            </td>
-        </tr>
-
+    <table>        
         <!-- 1行目の作成 -->
         <tr>
-            <!-- セルの作成 -->
+            <td>
+                <button id="Button_vowA">あ</button>
+            </td>
+            <td>
+                <button id="Button_vowI">い</button>
+            </td>
+            <td>
+                <button id="Button_vowU">う</button>
+            </td>
+            <td>
+                <button id="Button_vowE">え</button>
+            </td>
+            <td>
+                <button id="Button_vowO">お</button>
+            </td>
+        </tr>
+    </table>
+
+    <table>
+        <!-- 1行目の作成 -->
+        <tr>
             <td>Type</td>
             <td>
                 <select id="type" onchange="ChangeType()" size="4">
@@ -46,35 +64,35 @@
                     <option value="triangle">Triangle</option>
                 </select>
             </td>
-
-            <td>Vowel</td>
-            <td>
-                <select id="vowel" onchange="ChangeVowel()" size="5">
-                    <option value="fmt_a" selected=True>あ</option>
-                    <option value="fmt_i">い</option>
-                    <option value="fmt_u">う</option>
-                    <option value="fmt_e">え</option>
-                    <option value="fmt_o">お</option>
-                </select>
-            </td>
         </tr>
 
         <!-- 2行目の作成 -->
         <tr>
             <!-- セルの作成 -->
-            <td>freq</td>
+            <td>Frequency</td>
             <td>
-                <input type="range" min="60" max="3000" size="10"
+                <input type="range" min="60" max="1760" step="10" size="10"
                        id="freq" value="440" oninput="Changefreq()"
                        />
             </td>
             <td><output id="disp_freq">440</output>[Hz]</td>
         </tr>
+        <!-- 2行目の作成 -->
+        <tr>
+            <!-- セルの作成 -->
+            <td>Volume</td>
+            <td>
+                <input type="range" min="0" max="100" step="10" size="10"
+                       id="vol" value="50" oninput="ChangeVol()"
+                       />
+            </td>
+            <td><output id="disp_vol">50</output></td>
+        </tr>
     </table>
     <br>
-
-    <p>参考1：https://www.g200kg.com/jp/docs/webaudio/oscillator.html</p>
-    <p>参考2：https://ameblo.jp/erikki-chann/entry-10410227225.html</p>
+    <a href="https://www.g200kg.com/jp/docs/webaudio/oscillator.html" target="_blank" rel="noopener noreferrer">Reference1: WebAudioAPI</a>
+    <br>
+    <a href="https://ameblo.jp/erikki-chann/entry-10410227225.html" target="_blank" rel="noopener noreferrer">Reference2: About formant</a>
 
     <!-- 見出しの作成 -->
     <h1>MultiTapChecker</h1>
@@ -105,7 +123,11 @@
             </td>
         </tr>
     </table>
-
+    <br>
+    <a href="https://noveblo.com/javascript-touchevent/" target="_blank" rel="noopener noreferrer">Reference1: Touch event</a>
+    <br>
+    <a href="https://muumv.com/click-tap/" target="_blank" rel="noopener noreferrer">Reference2: Responsive button</a>
+    
 
     <script type="text/javascript">
 
@@ -117,14 +139,26 @@
 
         var type  = document.getElementById("type").value;
         var freq  = parseFloat(document.getElementById("freq").value);
+        var vol   = parseFloat(document.getElementById("vol").value);
         var isInit = 0;
         var fmt = fmt_a;
-        var vowel = document.getElementById("vowel").value;
         var oscfmt = [];
+        var g_audioctx;
 
         window.AudioContext = window.webkitAudioContext||window.AudioContext;
-        document.querySelector('#ButtonPlay').addEventListener('click', function() {
-            var audioctx = new AudioContext();
+        document.querySelector('#Button_vowA').addEventListener('click', function() { g_audioctx = OscPlay(g_audioctx, fmt_a) });
+        document.querySelector('#Button_vowI').addEventListener('click', function() { g_audioctx = OscPlay(g_audioctx, fmt_i) });
+        document.querySelector('#Button_vowU').addEventListener('click', function() { g_audioctx = OscPlay(g_audioctx, fmt_u) });
+        document.querySelector('#Button_vowE').addEventListener('click', function() { g_audioctx = OscPlay(g_audioctx, fmt_e) });
+        document.querySelector('#Button_vowO').addEventListener('click', function() { g_audioctx = OscPlay(g_audioctx, fmt_o) });
+
+        function OscPlay(audioctx, fmt) {
+            if (isInit == 0){
+                audioctx = new AudioContext();
+                g_audioctx = audioctx;
+                isInit = 1;
+                console.log("init audio context")
+            }
 
             // メイン用オシレータのセット
             var oscmain = audioctx.createOscillator();
@@ -143,16 +177,18 @@
             var t0 = audioctx.currentTime;
 
             // メイン用ゲインのセット
-            var gainmain = audioctx.createGain(); 
+            var gainmain = audioctx.createGain();
+            var volmain = vol;
             gainmain.gain.value = 0;
-            gainmain.gain.setValueAtTime(1, t0);
-            gainmain.gain.linearRampToValueAtTime(0, t0+.2);
+            gainmain.gain.setValueAtTime(volmain / 100, t0);
+            gainmain.gain.linearRampToValueAtTime(0, t0+.3);
 
             // フォルマント用ゲインのセット
             var gainfmt = audioctx.createGain();
+            var volfmt = vol * 0.5;
             gainfmt.gain.value = 0;
-            gainfmt.gain.setValueAtTime(0.5, t0);
-            gainfmt.gain.linearRampToValueAtTime(0, t0+.2);
+            gainfmt.gain.setValueAtTime(volfmt / 100, t0);
+            gainfmt.gain.linearRampToValueAtTime(0, t0+.3);
             
             // 接続とスタートとストップ
             oscmain.connect(gainmain);
@@ -169,37 +205,13 @@
                 oscfmt[i].start();
                 oscfmt[i].stop(t0 + 1.0);
             }
-        });
 
+            return audioctx;
+        }
 
         function ChangeType()
         {
             type = document.getElementById("type").value;
-        }
-
-        function ChangeVowel()
-        {
-            vowel =  document.getElementById("vowel").value;
-            switch (vowel)
-            {
-                case "fmt_a":
-                    fmt = fmt_a;
-                    break;
-                case "fmt_i":
-                    fmt = fmt_i;
-                    break;
-                case "fmt_u":
-                    fmt = fmt_u;
-                    break;
-                case "fmt_e":
-                    fmt = fmt_e;
-                    break;
-                case "fmt_o":
-                    fmt = fmt_o;
-                    break;
-                default:
-                    break;
-            }
         }
 
         function Changefreq()
@@ -208,20 +220,29 @@
             document.getElementById('disp_freq').value = freq;
         }
 
+        function ChangeVol()
+        {
+            vol = parseFloat(document.getElementById("vol").value);
+            document.getElementById('disp_vol').value = vol;
+        }
 
-        document.querySelector('#ButtonA').addEventListener("touchstart", () => {
+
+        var _mousedown = (window.ontouchstart === undefined) ? 'mousedown' : 'touchstart';
+        var _mouseup   = (window.ontouchstart === undefined) ? 'mouseup'   : 'touchend';        
+
+        document.querySelector('#ButtonA').addEventListener(_mousedown, () => {
             document.getElementById('disp_a').value = 'A';
         })
 
-        document.querySelector('#ButtonA').addEventListener("touchend", () => {
+        document.querySelector('#ButtonA').addEventListener(_mouseup, () => {
             document.getElementById('disp_a').value = '_';
         })
 
-        document.querySelector('#ButtonB').addEventListener("touchstart", () => {
+        document.querySelector('#ButtonB').addEventListener(_mousedown, () => {
             document.getElementById('disp_b').value = 'B';
         })
 
-        document.querySelector('#ButtonB').addEventListener("touchend", () => {
+        document.querySelector('#ButtonB').addEventListener(_mouseup, () => {
             document.getElementById('disp_b').value = '_';
         })
 
